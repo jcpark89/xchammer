@@ -13,7 +13,7 @@ PREFIX := /usr/local
 workspace: build
 	@tools/bazelwrapper build :xchammer_config
 	$(XCHAMMER_BIN) generate \
-		bazel-genfiles/xchammer_config/XCHammer.json \
+		bazel-bin/xchammer_config/XCHammer.json \
 	    --bazel $(ROOT_DIR)/tools/bazelwrapper \
 	    --force
 

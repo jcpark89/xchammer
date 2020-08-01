@@ -1,9 +1,11 @@
+
 load(
   "//Vendor/rules_pods/BazelExtensions:extensions.bzl",
-  "pch_with_name_hint",
   "acknowledged_target",
   "gen_module_map",
-  "gen_includes"
+  "gen_includes",
+  "headermap",
+  "umbrella_header"
 )
 # Add a config setting release for compilation mode
 # Assume that people are using `opt` for release mode
@@ -15,13 +17,64 @@ config_setting(
     "compilation_mode": "opt"
   }
 )
+config_setting(
+  name = "osxCase",
+  values = {
+    "apple_platform_type": "macos"
+  }
+)
+config_setting(
+  name = "tvosCase",
+  values = {
+    "apple_platform_type": "tvos"
+  }
+)
+config_setting(
+  name = "watchosCase",
+  values = {
+    "apple_platform_type": "watchos"
+  }
+)
+filegroup(
+  name = "PINOperation_package_hdrs",
+  srcs = [
+    "PINOperation_cxx_direct_hdrs",
+    "PINOperation_direct_hdrs"
+  ],
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
+  name = "PINOperation_cxx_direct_hdrs",
+  srcs = glob(
+    [
+      "pod_support/Headers/Public/**/*",
+      "Source/**/*.h"
+    ]
+  ),
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
+  name = "PINOperation_cxx_public_hdrs",
+  srcs = glob(
+    [
+      "Source/**/*.h"
+    ]
+  ),
+  visibility = [
+    "//visibility:public"
+  ]
+)
 filegroup(
   name = "PINOperation_cxx_hdrs",
   srcs = glob(
     [
+      "pod_support/Headers/Public/**/*",
       "Source/**/*.h"
-    ],
-    exclude_directories = 1
+    ]
   ),
   visibility = [
     "//visibility:public"
@@ -33,6 +86,18 @@ filegroup(
     "PINOperation_cxx_hdrs",
     "PINOperation_hdrs"
   ],
+  visibility = [
+    "//visibility:public"
+  ]
+)
+headermap(
+  name = "PINOperation_cxx_hmap",
+  namespace = "PINOperation",
+  hdrs = [
+    "PINOperation_package_hdrs",
+    ":PINOperation_cxx_union_hdrs"
+  ],
+  deps = [],
   visibility = [
     "//visibility:public"
   ]
@@ -52,22 +117,12 @@ objc_library(
     ],
     exclude = [
       "Source/**/*.m"
-    ],
-    exclude_directories = 1
-  ),
-  hdrs = [
-    ":PINOperation_cxx_union_hdrs",
-    ":PINOperation_module_map_module_map_file"
-  ],
-  pch = pch_with_name_hint(
-    "PINOperation",
-    [
-      "Source/**/*.pch"
     ]
   ),
-  includes = [
-    "PINOperation_module_map"
+  hdrs = [
+    ":PINOperation_cxx_hdrs"
   ],
+  pch = "pod_support/Headers/Private/PINOperation-prefix.pch",
   sdk_frameworks = [
     "Foundation"
   ],
@@ -75,6 +130,8 @@ objc_library(
     ":PINOperation_cxx_includes"
   ],
   copts = [
+    "-std=c++14",
+    "-Wno-everything",
     "-Wnon-modular-include-in-framework-module",
     "-g",
     "-stdlib=libc++",
@@ -90,7 +147,8 @@ objc_library(
   ] + select(
     {
       "//conditions:default": [
-        "-DPOD_CONFIGURATION_RELEASE=0"
+        "-DDEBUG=1",
+        "-DPOD_CONFIGURATION_DEBUG=1"
       ],
       ":release": [
         "-DPOD_CONFIGURATION_RELEASE=1",
@@ -100,7 +158,8 @@ objc_library(
   ) + [
     "-IVendor/PINOperation/pod_support/Headers/Public/PINOperation/"
   ] + [
-    "-fmodule-name=PINOperation_pod_module"
+    "-fmodule-name=PINOperation",
+    "-fmodules"
   ],
   visibility = [
     "//visibility:public"
@@ -112,19 +171,53 @@ acknowledged_target(
   value = "//Vendor/PINOperation/pod_support_buildable:acknowledgement_fragment"
 )
 filegroup(
+  name = "PINOperation_direct_hdrs",
+  srcs = glob(
+    [
+      "pod_support/Headers/Public/**/*",
+      "Source/**/*.h"
+    ]
+  ),
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
+  name = "PINOperation_public_hdrs",
+  srcs = glob(
+    [
+      "Source/**/*.h"
+    ]
+  ) + [
+    ":PINOperation_cxx_public_hdrs"
+  ],
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
   name = "PINOperation_hdrs",
   srcs = glob(
     [
-      "pod_support/Headers/Public/**/*"
-    ],
-    exclude_directories = 1
-  ) + glob(
-    [
+      "pod_support/Headers/Public/**/*",
       "Source/**/*.h"
-    ],
-    exclude_directories = 1
+    ]
   ) + [
     ":PINOperation_cxx_hdrs"
+  ],
+  visibility = [
+    "//visibility:public"
+  ]
+)
+headermap(
+  name = "PINOperation_hmap",
+  namespace = "PINOperation",
+  hdrs = [
+    "PINOperation_package_hdrs",
+    ":PINOperation_hdrs"
+  ],
+  deps = [
+    ":PINOperation_cxx_hmap"
   ],
   visibility = [
     "//visibility:public"
@@ -136,36 +229,18 @@ gen_includes(
     "Vendor/PINOperation/pod_support/Headers/Public/"
   ]
 )
-gen_module_map(
-  "PINOperation",
-  "PINOperation_module_map",
-  "PINOperation",
-  [
-    "PINOperation_hdrs"
-  ]
-)
 objc_library(
   name = "PINOperation",
   enable_modules = 1,
   srcs = glob(
     [
       "Source/**/*.m"
-    ],
-    exclude_directories = 1
-  ),
-  hdrs = [
-    ":PINOperation_hdrs",
-    ":PINOperation_module_map_module_map_file"
-  ],
-  pch = pch_with_name_hint(
-    "PINOperation",
-    [
-      "Source/**/*.pch"
     ]
   ),
-  includes = [
-    "PINOperation_module_map"
+  hdrs = [
+    ":PINOperation_hdrs"
   ],
+  pch = "pod_support/Headers/Private/PINOperation-prefix.pch",
   sdk_frameworks = [
     "Foundation"
   ],
@@ -174,6 +249,8 @@ objc_library(
     ":PINOperation_includes"
   ],
   copts = [
+    "-fobjc-weak",
+    "-Wno-everything",
     "-Wnon-modular-include-in-framework-module",
     "-g",
     "-stdlib=libc++",
@@ -189,7 +266,8 @@ objc_library(
   ] + select(
     {
       "//conditions:default": [
-        "-DPOD_CONFIGURATION_RELEASE=0"
+        "-DDEBUG=1",
+        "-DPOD_CONFIGURATION_DEBUG=1"
       ],
       ":release": [
         "-DPOD_CONFIGURATION_RELEASE=1",
@@ -199,7 +277,8 @@ objc_library(
   ) + [
     "-IVendor/PINOperation/pod_support/Headers/Public/PINOperation/"
   ] + [
-    "-fmodule-name=PINOperation_pod_module"
+    "-fmodule-name=PINOperation",
+    "-fmodules"
   ],
   visibility = [
     "//visibility:public"

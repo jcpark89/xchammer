@@ -1,10 +1,11 @@
 load('@build_bazel_rules_apple//apple:apple.bzl', 'apple_static_framework_import')
 load(
   "//Vendor/rules_pods/BazelExtensions:extensions.bzl",
-  "pch_with_name_hint",
   "acknowledged_target",
   "gen_module_map",
-  "gen_includes"
+  "gen_includes",
+  "headermap",
+  "umbrella_header"
 )
 # Add a config setting release for compilation mode
 # Assume that people are using `opt` for release mode
@@ -16,14 +17,72 @@ config_setting(
     "compilation_mode": "opt"
   }
 )
+config_setting(
+  name = "osxCase",
+  values = {
+    "apple_platform_type": "macos"
+  }
+)
+config_setting(
+  name = "tvosCase",
+  values = {
+    "apple_platform_type": "tvos"
+  }
+)
+config_setting(
+  name = "watchosCase",
+  values = {
+    "apple_platform_type": "watchos"
+  }
+)
+filegroup(
+  name = "GoogleNetworkingUtilities_package_hdrs",
+  srcs = [
+    "GoogleNetworkingUtilities_direct_hdrs"
+  ],
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
+  name = "GoogleNetworkingUtilities_direct_hdrs",
+  srcs = glob(
+    [
+      "pod_support/Headers/Public/**/*"
+    ]
+  ),
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
+  name = "GoogleNetworkingUtilities_public_hdrs",
+  srcs = [],
+  visibility = [
+    "//visibility:public"
+  ]
+)
 filegroup(
   name = "GoogleNetworkingUtilities_hdrs",
   srcs = glob(
     [
       "pod_support/Headers/Public/**/*"
-    ],
-    exclude_directories = 1
+    ]
   ),
+  visibility = [
+    "//visibility:public"
+  ]
+)
+headermap(
+  name = "GoogleNetworkingUtilities_hmap",
+  namespace = "GoogleNetworkingUtilities",
+  hdrs = [
+    "GoogleNetworkingUtilities_package_hdrs",
+    ":GoogleNetworkingUtilities_hdrs"
+  ],
+  deps = [
+    "//Vendor/GoogleSymbolUtilities:GoogleSymbolUtilities"
+  ],
   visibility = [
     "//visibility:public"
   ]
@@ -34,28 +93,13 @@ gen_includes(
     "Vendor/GoogleNetworkingUtilities/pod_support/Headers/Public/"
   ]
 )
-gen_module_map(
-  "GoogleNetworkingUtilities",
-  "GoogleNetworkingUtilities_module_map",
-  "GoogleNetworkingUtilities",
-  [
-    "GoogleNetworkingUtilities_hdrs"
-  ]
-)
 objc_library(
   name = "GoogleNetworkingUtilities",
   enable_modules = 1,
   hdrs = [
-    ":GoogleNetworkingUtilities_hdrs",
-    ":GoogleNetworkingUtilities_module_map_module_map_file"
+    ":GoogleNetworkingUtilities_hdrs"
   ],
-  pch = pch_with_name_hint(
-    "GoogleNetworkingUtilities",
-    []
-  ),
-  includes = [
-    "GoogleNetworkingUtilities_module_map"
-  ],
+  pch = "pod_support/Headers/Private/GoogleNetworkingUtilities-prefix.pch",
   sdk_frameworks = [
     "Security"
   ],
@@ -65,6 +109,7 @@ objc_library(
     ":GoogleNetworkingUtilities_includes"
   ],
   copts = [
+    "-fobjc-weak",
     "-Wno-everything",
     "-Wnon-modular-include-in-framework-module",
     "-g",
@@ -81,7 +126,8 @@ objc_library(
   ] + select(
     {
       "//conditions:default": [
-        "-DPOD_CONFIGURATION_RELEASE=0"
+        "-DDEBUG=1",
+        "-DPOD_CONFIGURATION_DEBUG=1"
       ],
       ":release": [
         "-DPOD_CONFIGURATION_RELEASE=1",
@@ -91,7 +137,8 @@ objc_library(
   ) + [
     "-IVendor/GoogleNetworkingUtilities/pod_support/Headers/Public/GoogleNetworkingUtilities/"
   ] + [
-    "-fmodule-name=GoogleNetworkingUtilities_pod_module"
+    "-fmodule-name=GoogleNetworkingUtilities",
+    "-fmodules"
   ],
   visibility = [
     "//visibility:public"
@@ -109,10 +156,14 @@ apple_static_framework_import(
   framework_imports = glob(
     [
       "Frameworks/frameworks/GoogleNetworkingUtilities.framework/**"
-    ],
-    exclude_directories = 1
+    ]
   ),
   visibility = [
     "//visibility:public"
   ]
+)
+acknowledged_target(
+  name = "GoogleNetworkingUtilities_VendoredFrameworks_acknowledgement",
+  deps = [],
+  value = "//Vendor/GoogleNetworkingUtilities/pod_support_buildable:acknowledgement_fragment"
 )

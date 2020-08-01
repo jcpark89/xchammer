@@ -1,10 +1,11 @@
 load('@build_bazel_rules_apple//apple:apple.bzl', 'apple_static_framework_import')
 load(
   "//Vendor/rules_pods/BazelExtensions:extensions.bzl",
-  "pch_with_name_hint",
   "acknowledged_target",
   "gen_module_map",
-  "gen_includes"
+  "gen_includes",
+  "headermap",
+  "umbrella_header"
 )
 # Add a config setting release for compilation mode
 # Assume that people are using `opt` for release mode
@@ -16,14 +17,70 @@ config_setting(
     "compilation_mode": "opt"
   }
 )
+config_setting(
+  name = "osxCase",
+  values = {
+    "apple_platform_type": "macos"
+  }
+)
+config_setting(
+  name = "tvosCase",
+  values = {
+    "apple_platform_type": "tvos"
+  }
+)
+config_setting(
+  name = "watchosCase",
+  values = {
+    "apple_platform_type": "watchos"
+  }
+)
+filegroup(
+  name = "GoogleSymbolUtilities_package_hdrs",
+  srcs = [
+    "GoogleSymbolUtilities_direct_hdrs"
+  ],
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
+  name = "GoogleSymbolUtilities_direct_hdrs",
+  srcs = glob(
+    [
+      "pod_support/Headers/Public/**/*"
+    ]
+  ),
+  visibility = [
+    "//visibility:public"
+  ]
+)
+filegroup(
+  name = "GoogleSymbolUtilities_public_hdrs",
+  srcs = [],
+  visibility = [
+    "//visibility:public"
+  ]
+)
 filegroup(
   name = "GoogleSymbolUtilities_hdrs",
   srcs = glob(
     [
       "pod_support/Headers/Public/**/*"
-    ],
-    exclude_directories = 1
+    ]
   ),
+  visibility = [
+    "//visibility:public"
+  ]
+)
+headermap(
+  name = "GoogleSymbolUtilities_hmap",
+  namespace = "GoogleSymbolUtilities",
+  hdrs = [
+    "GoogleSymbolUtilities_package_hdrs",
+    ":GoogleSymbolUtilities_hdrs"
+  ],
+  deps = [],
   visibility = [
     "//visibility:public"
   ]
@@ -34,33 +91,19 @@ gen_includes(
     "Vendor/GoogleSymbolUtilities/pod_support/Headers/Public/"
   ]
 )
-gen_module_map(
-  "GoogleSymbolUtilities",
-  "GoogleSymbolUtilities_module_map",
-  "GoogleSymbolUtilities",
-  [
-    "GoogleSymbolUtilities_hdrs"
-  ]
-)
 objc_library(
   name = "GoogleSymbolUtilities",
   enable_modules = 1,
   hdrs = [
-    ":GoogleSymbolUtilities_hdrs",
-    ":GoogleSymbolUtilities_module_map_module_map_file"
+    ":GoogleSymbolUtilities_hdrs"
   ],
-  pch = pch_with_name_hint(
-    "GoogleSymbolUtilities",
-    []
-  ),
-  includes = [
-    "GoogleSymbolUtilities_module_map"
-  ],
+  pch = "pod_support/Headers/Private/GoogleSymbolUtilities-prefix.pch",
   deps = [
     ":GoogleSymbolUtilities_VendoredFrameworks",
     ":GoogleSymbolUtilities_includes"
   ],
   copts = [
+    "-fobjc-weak",
     "-Wno-everything",
     "-Wnon-modular-include-in-framework-module",
     "-g",
@@ -77,7 +120,8 @@ objc_library(
   ] + select(
     {
       "//conditions:default": [
-        "-DPOD_CONFIGURATION_RELEASE=0"
+        "-DDEBUG=1",
+        "-DPOD_CONFIGURATION_DEBUG=1"
       ],
       ":release": [
         "-DPOD_CONFIGURATION_RELEASE=1",
@@ -87,7 +131,8 @@ objc_library(
   ) + [
     "-IVendor/GoogleSymbolUtilities/pod_support/Headers/Public/GoogleSymbolUtilities/"
   ] + [
-    "-fmodule-name=GoogleSymbolUtilities_pod_module"
+    "-fmodule-name=GoogleSymbolUtilities",
+    "-fmodules"
   ],
   visibility = [
     "//visibility:public"
@@ -103,10 +148,14 @@ apple_static_framework_import(
   framework_imports = glob(
     [
       "Frameworks/frameworks/GoogleSymbolUtilities.framework/**"
-    ],
-    exclude_directories = 1
+    ]
   ),
   visibility = [
     "//visibility:public"
   ]
+)
+acknowledged_target(
+  name = "GoogleSymbolUtilities_VendoredFrameworks_acknowledgement",
+  deps = [],
+  value = "//Vendor/GoogleSymbolUtilities/pod_support_buildable:acknowledgement_fragment"
 )
