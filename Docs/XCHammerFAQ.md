@@ -9,6 +9,79 @@ design goal, it supports all of these features by default.
 _XCHammer generates an Xcode project from Bazel rules, which we've found to be a
 great way to describe an Xcode project and corresponding apps!_
 
+Since Xcode relies on the project configuration for semantic IDE features, like
+code completion and diagnostics, correctly setting up the Xcode configuration is
+a requirement. From the developers perspective, the Xcode build is functionally
+equivalent to the Bazel one: optimizations, files, errors, and warnings are
+identical.
+
+## What is XCHammer?
+
+XCHammer is a Bazel [rule](Docs/BazelForiOSDevelopers.md#rule) and command line
+program that generates an Xcode project by virtue of standard Bazel interfaces,
+[Tulsi](https://github.com/bazelbuild/tulsi),
+and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+
+It traverses the Bazel build graph with an
+[aspect](Docs/BazelForiOSDevelopers.md#aspects) to gather information about the
+build graph and passes the information to a
+[rule](Docs/BazelForiOSDevelopers.md#rules), which then writes out an project
+via XcodeGen. Because of it's prolific code reuse, it's a quite simple piece of
+code that ended up being very small on disk. The core source code is just over a
+couple thousand LOC of swift excluding dependencies.
+
+That XCHammer reuses robust open source code is an implementation detail and not
+exposed in any way to users. XCHammer relies on much functionality from Tulsi.
+First, Tulsi's code is responsible for driving Bazel with the build script and
+and copying artifacts into DerivedData. Finally it uses the the Tulsi aspect to
+gather information about a project.
+
+For the backend, XCHammer uses XcodeGen as an Xcode project generator. After
+reading in the Bazel build graph with Tulsi, XcodeGen structs are allocated.
+Finally, it uses the dependency, xcodeproj, to write an Xcode project out to
+disk.
+
+Because these projects are fundamental to the XCHammer, contributors to XCHammer
+often improve XcodeGen, Tulsi, Bazel, and community rules. By reusing Tulsi and
+XcodeGen, XCHammer is overall easier to maintain and update across Bazel and
+Xcode updates.
+
+Please see the document [Bazel for iOS
+developers](Docs/BazelForiOSDevelopers.md) to learn more about the common
+interfaces that XCHammer uses. The segment [Xcode Project
+generators](Docs/BazelForiOSDevelopers.md#generated-xcode-projects) provides an
+high level overview of such an architecture and how an aspects and rule fit
+together with Bazel and how Xcode is integrated with Bazel.
+
+## How is XCHammer different than Tulsi?
+
+Despite Tulsi being a core _dependenecy_ of XCHammer, they produce very
+different results.
+
+#### Generated Projects
+
+Both Tulsi and XCHammer produce Xcode projects. Tulsi produces a project which
+contains a minimimal set of sources. When Pinterest first migrated, developers
+we suprised to see missing types that used to be in the original project.
+
+In addition to generating an Xcode project that calls `bazel build`, XCHammer
+can also generate a _pure_ Xcode project. This output project builds primarily
+with Xcode. This makes it beneficial for building beta features before Bazel has
+supported a feature. Because XCHammer projects build with Xcode or Bazel, the
+project should contains _all_ of the sources types, images, localization files,
+and assets. While this is slower to generate many developers would wait for the
+full result.
+
+#### Interface
+
+XCHammer also provides Bazel rule to build Xcode projects and Tulsi is a
+primairly a command line program. There's a couple silly hacks that make this
+possible, but the authors have found this interface to integrate well with the
+XCHammer DSL.
+
+_The XCHammer authors appreciate and stand on the shoulders of contributions from
+the Tulsi team!_
+
 ## How is XCHammer versioned?
 
 XCHammer aims to be compatible with the latest official version of Bazel,

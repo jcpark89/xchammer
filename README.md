@@ -22,7 +22,14 @@ XCHammer generates Xcode projects from a [Bazel](https://bazel.build/) Workspace
 
 ## Usage
 
-_Note: this README is intended to be a minimal, quick start guide. For a comprehensive explanation of XCHammer, see [Introducing XCHammer](Docs/FastAndReproducibleBuildsWithXCHammer.md) and [The XCHammer FAQ](Docs/XCHammerFAQ.md)_
+_Note: this README is intended to be a minimal, quick start guide to XCHammer.
+To learn more about XCHammer see [Introducing
+XCHammer](Docs/FastAndReproducibleBuildsWithXCHammer.md) and [The XCHammer
+FAQ](Docs/XCHammerFAQ.md). To learn more about Bazel, see [Bazel for iOS
+developers](Docs/BazelForiOSDevelopers.md). To learn about how Pinterest uses
+XCHamemr see [Introducing
+XCHammer](Docs/FastAndReproducibleBuildsWithXCHammer.md) and [Pinterest Focused
+Xcode Projects](PinterestFocusedXcodeProjects.md)_
 
 ### Installation
 
